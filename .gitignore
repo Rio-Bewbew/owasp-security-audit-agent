@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment variables
+.env
+*.env
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Scan history (data lokal, jangan di-commit)
+scan_history.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log

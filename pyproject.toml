@@ -44,8 +44,10 @@ google = ["langchain-google-genai>=2.0"]
 ollama = ["langchain-ollama>=0.2"]
 
 [project.urls]
-Homepage = "https://github.com/rionelson/owasp-audit-agent"
-Repository = "https://github.com/rionelson/owasp-audit-agent"
+Homepage = "https://github.com/Rio-Bewbew/owasp-security-audit-agent"
+Repository = "https://github.com/Rio-Bewbew/owasp-security-audit-agent"
+Issues = "https://github.com/Rio-Bewbew/owasp-security-audit-agent/issues"
+Changelog = "https://github.com/Rio-Bewbew/owasp-security-audit-agent/blob/main/CHANGELOG.md"
 
 [project.scripts]
 owasp-audit = "agent.cli:main"

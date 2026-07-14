@@ -40,7 +40,7 @@ def export_sarif(filename: str, findings: List[Finding]) -> str:
                 "name": f.owasp_category.value,
                 "shortDescription": {"text": f.owasp_category.value},
                 "fullDescription":  {"text": f.description},
-                "helpUri": f"https://owasp.org/Top10/",
+                "helpUri": "https://owasp.org/Top10/",
                 "properties": {
                     "security-severity": LEVEL_MAP.get(f.severity, "5.0"),
                     "tags": ["security", "owasp"]

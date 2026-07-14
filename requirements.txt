@@ -1,0 +1,10 @@
+# Runtime dependencies — versi mengikuti yang terpasang & teruji.
+langgraph>=1.2,<2
+langchain-groq>=1.1,<2
+pydantic>=2.10,<3
+python-dotenv>=1.0
+fpdf2>=2.8
+tomli>=2.0; python_version < "3.11"
+
+# UI (opsional) — dibutuhkan hanya untuk menjalankan app.py (Streamlit).
+streamlit>=1.50

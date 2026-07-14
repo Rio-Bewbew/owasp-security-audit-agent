@@ -1,10 +1,16 @@
+import ast
 import re
 from typing import List
-from agent.base_checker import BaseChecker
+
+from agent.ast_utils import ASTChecker, call_name, const_str
 from agent.models import Finding, OWASPCategory, SeverityLevel
 
+SECRET_NAMES = {"password", "secret_key", "api_key", "token"}
+WEAK_HASHES = {"md5", "sha1", "hashlib.md5", "hashlib.sha1"}
 
-class CryptoChecker(BaseChecker):
+
+class CryptoChecker(ASTChecker):
+    """A04 Cryptographic Failures — hash lemah & kredensial hardcoded via AST."""
 
     @property
     def category(self) -> OWASPCategory:
@@ -14,47 +20,64 @@ class CryptoChecker(BaseChecker):
     def name(self) -> str:
         return "Cryptographic Failures Checker (A04:2025)"
 
-    def analyze(self, code: str, filename: str) -> List[Finding]:
-        findings = []
-        lines = code.split("\n")
-
-        weak_algos = [
-            (r'\bmd5\b', "MD5"),
-            (r'\bsha1\b', "SHA1"),
-            (r'hashlib\.md5', "hashlib.md5"),
-            (r'hashlib\.sha1', "hashlib.sha1"),
-        ]
-        secret_patterns = [
-            (r'password\s*=\s*["\'][^"\']{3,}["\']', "hardcoded password"),
-            (r'secret_key\s*=\s*["\'][^"\']{3,}["\']', "hardcoded secret key"),
-            (r'api_key\s*=\s*["\'][^"\']{3,}["\']', "hardcoded API key"),
-            (r'token\s*=\s*["\'][^"\']{3,}["\']', "hardcoded token"),
-        ]
-
-        for i, line in enumerate(lines, 1):
-            for pattern, label in weak_algos:
-                if re.search(pattern, line, re.IGNORECASE):
+    def check_ast(self, tree: ast.AST, code: str, filename: str) -> List[Finding]:
+        findings: List[Finding] = []
+        for node in ast.walk(tree):
+            # Kredensial hardcoded: <secret_name> = "literal"
+            if isinstance(node, ast.Assign):
+                value = const_str(node.value)
+                if value is not None and len(value) >= 3:
+                    for target in node.targets:
+                        if isinstance(target, ast.Name) and target.id.lower() in SECRET_NAMES:
+                            findings.append(Finding(
+                                owasp_category=OWASPCategory.A04,
+                                severity=SeverityLevel.CRITICAL,
+                                title=f"Kredensial Hardcoded: {target.id}",
+                                description=f"Ditemukan nilai '{target.id}' yang ditulis langsung di kode.",
+                                line_number=node.lineno,
+                                recommendation="Simpan secrets di environment variables dan baca dengan os.getenv().",
+                            ))
+            # Hash lemah: hashlib.md5(...) / md5(...) / sha1
+            if isinstance(node, ast.Call):
+                fn = call_name(node)
+                if fn in WEAK_HASHES:
+                    label = fn if "." in fn else fn.upper()
                     findings.append(Finding(
                         owasp_category=OWASPCategory.A04,
                         severity=SeverityLevel.HIGH,
                         title=f"Algoritma Hash Lemah: {label}",
-                        description=f"{label} sudah tidak aman dan rentan terhadap collision attack.",
-                        line_number=i,
-                        vulnerable_code=line.strip(),
-                        recommendation="Gunakan SHA-256 atau SHA-3: hashlib.sha256(data).hexdigest()"
+                        description=f"{label} tidak aman dan rentan collision attack.",
+                        line_number=node.lineno,
+                        recommendation="Gunakan SHA-256/SHA-3: hashlib.sha256(data).hexdigest().",
                     ))
-                    break
+        return findings
 
-            for pattern, label in secret_patterns:
+    def check_regex(self, code: str, filename: str) -> List[Finding]:
+        findings: List[Finding] = []
+        weak = [(r'\bmd5\b', "MD5"), (r'\bsha1\b', "SHA1"),
+                (r'hashlib\.md5', "hashlib.md5"), (r'hashlib\.sha1', "hashlib.sha1")]
+        secrets = [(r'password\s*=\s*["\'][^"\']{3,}["\']', "password"),
+                   (r'secret_key\s*=\s*["\'][^"\']{3,}["\']', "secret_key"),
+                   (r'api_key\s*=\s*["\'][^"\']{3,}["\']', "api_key"),
+                   (r'token\s*=\s*["\'][^"\']{3,}["\']', "token")]
+        for i, line in enumerate(code.split("\n"), 1):
+            for pattern, label in weak:
                 if re.search(pattern, line, re.IGNORECASE):
                     findings.append(Finding(
-                        owasp_category=OWASPCategory.A04,
-                        severity=SeverityLevel.CRITICAL,
-                        title=f"Kredensial Hardcoded: {label}",
-                        description=f"Ditemukan {label} yang ditulis langsung di kode.",
-                        line_number=i,
+                        owasp_category=OWASPCategory.A04, severity=SeverityLevel.HIGH,
+                        title=f"Algoritma Hash Lemah: {label}",
+                        description=f"{label} tidak aman.", line_number=i,
                         vulnerable_code=line.strip(),
-                        recommendation="Simpan secrets di environment variables dan baca dengan os.getenv()"
+                        recommendation="Gunakan SHA-256.",
                     ))
-
+                    break
+            for pattern, label in secrets:
+                if re.search(pattern, line, re.IGNORECASE):
+                    findings.append(Finding(
+                        owasp_category=OWASPCategory.A04, severity=SeverityLevel.CRITICAL,
+                        title=f"Kredensial Hardcoded: {label}",
+                        description=f"Ditemukan {label} hardcoded.", line_number=i,
+                        vulnerable_code=line.strip(),
+                        recommendation="Gunakan environment variables.",
+                    ))
         return findings

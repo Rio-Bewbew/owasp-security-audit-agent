@@ -1,0 +1,22 @@
+# Contoh konfigurasi owasp-audit-agent.
+# Salin ke `audit.toml` di root project lalu sesuaikan.
+# Semua nilai opsional — yang tidak diisi memakai default.
+# Env var (mis. OWASP_LLM_MODEL) menimpa nilai di file ini.
+
+[llm]
+provider = "groq"                     # groq | openai | anthropic | google | ollama
+model = "llama-3.1-8b-instant"
+temperature = 0.0
+# base_url = "http://localhost:11434" # untuk Ollama/endpoint OpenAI-compatible
+
+[audit]
+escalation_threshold = 3              # eskalasi jika jumlah temuan CRITICAL > nilai ini
+max_fix_iterations = 2                # batas loop auto-fix
+auto_fix = true                       # matikan (false) untuk hanya mendeteksi tanpa memperbaiki
+
+[checkers]
+# Kosongkan `enabled` untuk memakai SEMUA checker.
+# Isi untuk membatasi hanya ke kode tertentu, mis. ["A01", "A05", "A07"].
+enabled = []
+# Kode kategori yang dinonaktifkan meskipun terpasang.
+disabled = []

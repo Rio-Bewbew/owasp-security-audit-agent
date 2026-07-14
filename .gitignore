@@ -45,10 +45,15 @@ scan_history.json
 .DS_Store
 Thumbs.db
 
-# Test cache
+# Test & lint cache
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 
 # Logs
 *.log
+
+# Agent tooling / Streamlit skills (symlink environment-specific, jangan di-commit)
+.agents/
+.claude/

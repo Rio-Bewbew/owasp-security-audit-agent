@@ -5,7 +5,7 @@ Menggunakan PyPI JSON API untuk mendapatkan versi terbaru.
 import re
 import json
 import urllib.request
-from typing import List, Dict
+from typing import List
 from dataclasses import dataclass
 
 

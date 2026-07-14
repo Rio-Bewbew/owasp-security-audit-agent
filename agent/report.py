@@ -17,7 +17,6 @@ def _s(text: str) -> str:
         '•': '*',     # bullet •
         '·': '*',     # middle dot ·
         '→': '->',    # arrow →
-        '•': '-',     # bullet •
     }
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)

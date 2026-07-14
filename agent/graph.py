@@ -1,15 +1,33 @@
 from langgraph.graph import StateGraph, START, END
-from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 from agent.state import AuditState
 from agent.registry import registry
 from agent.rule_fixer import RuleBasedFixer
 from agent.models import SeverityLevel
+from agent.config import AuditConfig
+from agent.llm import build_llm
 
 load_dotenv()
 
-MAX_FIX_ITERATIONS = 2
-llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
+# Konfigurasi runtime (audit.toml + env). Menggantikan nilai hardcoded.
+config = AuditConfig.load()
+
+# Dipertahankan untuk kompatibilitas; kini bersumber dari config.
+MAX_FIX_ITERATIONS = config.max_fix_iterations
+
+# LLM dibuat lazy: baru diinstansiasi saat pertama dibutuhkan, sehingga
+# `import agent` tidak memaksa adanya API key / paket provider. Provider
+# dipilih dari config.llm_provider (groq/openai/anthropic/google/ollama atau
+# provider kustom terdaftar). Lihat agent/llm.py.
+_llm = None
+
+
+def get_llm():
+    """Kembalikan instance LLM (dibuat sekali, lalu di-cache)."""
+    global _llm
+    if _llm is None:
+        _llm = build_llm(config)
+    return _llm
 
 
 def run_checkers(state: AuditState) -> dict:
@@ -23,7 +41,7 @@ def run_checkers(state: AuditState) -> dict:
 
     return {
         "findings": all_findings,
-        "escalated": critical_count > 3,
+        "escalated": critical_count > config.escalation_threshold,
         "fix_iterations": 0,
         "verification_findings": [],
         "verified": False,
@@ -68,7 +86,7 @@ Berikan:
 
 Jawab dalam Bahasa Indonesia, singkat dan jelas."""
 
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     return {"summary": response.content}
 
 
@@ -78,6 +96,9 @@ def auto_fix(state: AuditState) -> dict:
     Hanya berjalan jika fix_approved = True (human-in-the-loop).
     Pada iterasi ke-2+, fix dari kode yang sudah pernah di-fix.
     """
+    if not config.auto_fix:
+        return {"fixed_code": state["code"]}
+
     if not state.get("fix_approved", True):
         return {"fixed_code": state["code"]}
 
@@ -120,7 +141,7 @@ def route_after_verify(state: AuditState) -> str:
         f.severity in (SeverityLevel.CRITICAL, SeverityLevel.HIGH)
         for f in vf
     )
-    if still_risky and iterations < MAX_FIX_ITERATIONS:
+    if still_risky and iterations < config.max_fix_iterations:
         return "loop_fix"
     return "done"
 
@@ -135,27 +156,12 @@ def build_graph():
         → auto_fix → verify_fixes
         → [conditional loop] auto_fix (max 2x) atau END
     """
-    from agent.tools.access_control_checker  import AccessControlChecker
-    from agent.tools.misconfig_checker       import MisconfigChecker
-    from agent.tools.supply_chain_checker    import SupplyChainChecker
-    from agent.tools.crypto_checker          import CryptoChecker
-    from agent.tools.injection_checker       import InjectionChecker
-    from agent.tools.insecure_design_checker import InsecureDesignChecker
-    from agent.tools.auth_checker            import AuthChecker
-    from agent.tools.integrity_checker       import IntegrityChecker
-    from agent.tools.logging_checker         import LoggingChecker
-    from agent.tools.exception_checker       import ExceptionChecker
-
-    registry.register(AccessControlChecker())
-    registry.register(MisconfigChecker())
-    registry.register(SupplyChainChecker())
-    registry.register(CryptoChecker())
-    registry.register(InjectionChecker())
-    registry.register(InsecureDesignChecker())
-    registry.register(AuthChecker())
-    registry.register(IntegrityChecker())
-    registry.register(LoggingChecker())
-    registry.register(ExceptionChecker())
+    # Auto-discovery: pindai checker internal di agent/tools/ dan muat plugin
+    # pihak ketiga via entry points. Tambah checker baru cukup dengan menaruh
+    # file baru di agent/tools/ — tanpa menyentuh fungsi ini.
+    registry.discover()
+    # Terapkan seleksi checker dari config (enabled/disabled).
+    registry.apply_config(config)
 
     wf = StateGraph(AuditState)
     wf.add_node("run_checkers",   run_checkers)
@@ -182,3 +188,18 @@ def build_graph():
     )
 
     return wf.compile()
+
+
+def audit_code(code: str, filename: str = "input.py") -> dict:
+    """
+    Entry point tingkat tinggi: jalankan audit lengkap atas sepotong kode
+    Python dan kembalikan state akhir (findings, summary, fixed_code, dll).
+
+    Contoh:
+        from agent import audit_code
+        result = audit_code(open("app.py").read(), "app.py")
+        for f in result["findings"]:
+            print(f.severity, f.title, f.line_number)
+    """
+    graph = build_graph()
+    return graph.invoke({"code": code, "filename": filename})

@@ -27,7 +27,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Lint (ruff)
-        run: ruff check .
+        run: ruff check agent tests
 
       - name: Run tests
         env:

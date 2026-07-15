@@ -216,6 +216,27 @@ Lalu set `provider = "myllm"` di config.
 
 ---
 
+## Dependency scanner
+
+Selain menganalisis kode, framework bisa memeriksa **dependensi** di
+`requirements.txt` terhadap kerentanan yang diketahui. Secara default ia
+mengecek tiap paket+versi ke database **[OSV.dev](https://osv.dev)** (mencakup
+ribuan advisory PyPI dan selalu terbaru); bila jaringan tidak tersedia, ia
+otomatis memakai daftar bawaan sebagai *fallback*.
+
+```bash
+owasp-audit --deps requirements.txt            # via OSV.dev
+owasp-audit --deps requirements.txt --offline  # hanya daftar bawaan
+owasp-audit --deps requirements.txt --json
+```
+
+```python
+from agent.dependency_scanner import scan_requirements
+
+for d in scan_requirements(open("requirements.txt").read()):
+    print(d.severity, d.package, d.installed_version, "->", d.safe_version, d.cve)
+```
+
 ## Menulis checker baru
 
 Cara termudah, subclass `ASTChecker` dan override `check_ast()` (opsional

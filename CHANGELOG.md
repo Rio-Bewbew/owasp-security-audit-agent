@@ -3,6 +3,23 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-07-15
+
+### Added
+- Dependency scanner kini terhubung ke **database kerentanan OSV.dev** (online):
+  tiap paket+versi di `requirements.txt` dicek ke `api.osv.dev`, mencakup ribuan
+  advisory PyPI dan selalu terbaru. Temuan menyertakan ID CVE/GHSA, versi
+  perbaikan, tingkat keparahan, dan sumber (`osv`/`builtin`).
+- Perintah CLI baru `owasp-audit --deps requirements.txt` (opsi `--offline` &
+  `--json`).
+- Fungsi `parse_requirements()` yang dapat dipakai ulang.
+
+### Changed
+- `scan_requirements(content, *, online=True, timeout=8)` — daftar bawaan
+  `KNOWN_VULNERABLE` kini menjadi *fallback* saat jaringan tidak tersedia,
+  query OSV gagal, atau `online=False`. `DepFinding` menambah field `source`
+  dan `vuln_id` (kompatibel mundur).
+
 ## [0.3.1] - 2026-07-14
 
 ### Changed

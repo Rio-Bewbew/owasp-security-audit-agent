@@ -5,6 +5,7 @@ Pemakaian:
     owasp-audit path/ke/file.py
     owasp-audit file.py --json
     owasp-audit --list-checkers
+    owasp-audit --deps requirements.txt
 """
 import argparse
 import json
@@ -59,6 +60,34 @@ def _cmd_audit(path: str, as_json: bool) -> int:
     return 1
 
 
+def _cmd_deps(path: str, as_json: bool, offline: bool) -> int:
+    from agent.dependency_scanner import scan_requirements
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+    except OSError as exc:
+        print(f"Gagal membaca file: {exc}", file=sys.stderr)
+        return 2
+
+    findings = scan_requirements(content, online=not offline)
+
+    if as_json:
+        print(json.dumps([f.__dict__ for f in findings], indent=2, ensure_ascii=False))
+        return 1 if findings else 0
+
+    if not findings:
+        print(f"✓ Tidak ada dependency rentan pada {path}.")
+        return 0
+
+    print(f"Ditemukan {len(findings)} dependency rentan pada {path}:\n")
+    for f in findings:
+        tag = f.cve or f.vuln_id or "-"
+        print(f"  [{f.severity}] {f.package} {f.installed_version} ({tag}, sumber: {f.source})")
+        print(f"      {f.description}")
+        print(f"      Perbaikan: {f.fix}")
+    return 1
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="owasp-audit",
@@ -67,12 +96,16 @@ def main(argv=None) -> int:
     parser.add_argument("path", nargs="?", help="File Python yang akan diaudit.")
     parser.add_argument("--json", action="store_true", help="Keluarkan hasil sebagai JSON.")
     parser.add_argument("--list-checkers", action="store_true", help="Tampilkan checker terdaftar lalu keluar.")
+    parser.add_argument("--deps", metavar="REQUIREMENTS", help="Scan file requirements.txt untuk dependency rentan (OSV.dev).")
+    parser.add_argument("--offline", action="store_true", help="Untuk --deps: pakai daftar bawaan saja, tanpa query OSV.")
     args = parser.parse_args(argv)
 
     if args.list_checkers:
         return _cmd_list_checkers()
+    if args.deps:
+        return _cmd_deps(args.deps, args.json, args.offline)
     if not args.path:
-        parser.error("berikan path file, atau gunakan --list-checkers")
+        parser.error("berikan path file, atau gunakan --list-checkers / --deps")
     return _cmd_audit(args.path, args.json)
 
 

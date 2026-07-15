@@ -18,7 +18,7 @@ from agent.config import AuditConfig
 from agent.llm import build_llm, register_provider, available_providers
 from agent.graph import build_graph, audit_code
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "audit_code",

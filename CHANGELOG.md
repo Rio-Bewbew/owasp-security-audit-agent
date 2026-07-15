@@ -3,6 +3,13 @@
 Format mengikuti [Keep a Changelog](https://keepachangelog.com/),
 dan proyek ini menganut [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-07-14
+
+### Changed
+- Perbaikan URL proyek di metadata (`Homepage`/`Repository`/`Issues`/`Changelog`)
+  menunjuk ke repo GitHub yang benar.
+- Rilis pertama via GitHub Actions Trusted Publishing (tanpa API token).
+
 ## [0.3.0] - 2026-07-14
 
 ### Changed

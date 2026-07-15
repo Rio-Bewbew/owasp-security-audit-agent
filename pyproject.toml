@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "owasp-audit-agent"
-version = "0.3.0"
+version = "0.3.1"
 description = "Agentic AI framework untuk audit keamanan kode Python berbasis OWASP Top 10 (2025)."
 readme = "README.md"
 requires-python = ">=3.10"
